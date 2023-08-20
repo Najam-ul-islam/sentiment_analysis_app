@@ -1,10 +1,10 @@
 # sentiment_analysis_app
 streamlit sentiment analysis app
-# Step-1
-Create an environment using conda
-  conda create -n sentiment_analyser_app
+
+# Create an environment using conda
+  # conda create -n sentiment_analyser_app
 then activate the environment  using  
-  conda activate sentiment_analysis_app
+  # conda activate sentiment_analysis_app
 then install the necessary dependencies to run this app which are
 python 3.9 or above
 
