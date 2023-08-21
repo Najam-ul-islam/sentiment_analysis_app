@@ -10,6 +10,10 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import matplotlib.pyplot as plt
 # from collections import Counter
+nltk.download('punkt')
+nltk.download('vader_lexicon')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 class TweetSentimentApp:
     def __init__(self):
