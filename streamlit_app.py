@@ -9,6 +9,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import matplotlib.pyplot as plt
+import joblib
 # from collections import Counter
 nltk.download('punkt')
 nltk.download('vader_lexicon')
@@ -17,15 +18,16 @@ nltk.download('wordnet')
 
 class TweetSentimentApp:
     def __init__(self):
-        self.model = load_model('lstm_sentiment_model.h5')
         self.tokenizer = Tokenizer()
-        self.tokenizer.fit_on_texts(['example text'])
         self.sent_analyzer = SentimentIntensityAnalyzer()
         self.positive_words = self.read_word_list('positive_words.txt')
         self.negative_words = self.read_word_list('negative_words.txt')
         self.neutral_words = self.read_word_list('neutral_words.txt')
         self.agitative_words = set(open('agitative_words.txt').read().splitlines())
         self.max_sequence_length = 100
+        # Load your logistic regression model and other necessary components here
+        self.logistic_regression_model = joblib.load('logistic_regression_model.pkl')  # Load your logistic regression model
+        self.tfidf_vectorizer = joblib.load('tf-idf-vectorizer.pkl')  # Load TF-IDF vectorizer or other feature extraction methods
 
     def clean_text(self, text):
         text = str(text)
@@ -50,23 +52,33 @@ class TweetSentimentApp:
         
         if isinstance(text, str):
             text = str(text)
-            sequences = self.tokenizer.texts_to_sequences([text])
-            if sequences:
-                padded_sequences = pad_sequences(sequences, maxlen=self.max_sequence_length)
-                predicted_sentiment = self.model.predict(padded_sequences)[0][0]
-                return predicted_sentiment
+            # Vectorize the text using the same method used during training
+            text_vector = self.tfidf_vectorizer.transform([text])  # You can adjust this for your specific preprocessing
+            # Predict sentiment using the logistic regression model
+            sentiment_label = self.logistic_regression_model.predict(text_vector)
+            return sentiment_label[0]  # Return the predicted sentiment label
       
         return "N/A", None
 
+    # def sentiment_label(self, sentiment_score):
+
+    #     if sentiment_score > 0:
+    #         return 'positive'
+    #     elif sentiment_score < 0:
+    #         return 'negative'
+    #     else:
+    #         return 'neutral'
     def sentiment_label(self, sentiment_score):
-
-        if sentiment_score > 0.2:
-            return 'positive'
-        elif sentiment_score < -0.2:
-            return 'negative'
-        else:
-            return 'neutral'
-
+        try:
+            sentiment_score = float(sentiment_score)
+            if sentiment_score > 0:
+                return 'positive'
+            elif sentiment_score < 0:
+                return 'negative'
+            else:
+                return 'neutral'
+        except ValueError:
+            return 'Invalid'
     def get_sentiment_score(self, tweet):
         
         if isinstance(tweet, str):
