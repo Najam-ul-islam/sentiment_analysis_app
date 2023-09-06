@@ -5,9 +5,7 @@ import nltk
 import re
 from textblob import TextBlob
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 import matplotlib.pyplot as plt
 import joblib
 # from collections import Counter
@@ -114,16 +112,11 @@ class TweetSentimentApp:
         return most_active_politician, num_tweets
     # =============================================================================================
     def read_word_list(self, filename):
-        
         with open(filename, 'r') as file:
-            
             return [line.lower().strip() for line in file]
-
     # =============================================================================================
     def analyze_tweets_sentiment(self, dataframe):
-
         mentions = []
-
         for index, row in dataframe.iterrows():
             username = row['username']
             tweet = str(row['tweets'])  # Convert to string to handle potential non-string values
@@ -341,10 +334,31 @@ class TweetSentimentApp:
                 agitation_keywords.add(word)
 
         return agitation_keywords
+    def predict_single_user_sentiment(self, user_input):
+        # Predict sentiment for a single user input
+        cleaned_input = self.clean_text(user_input)
+        sentiment_score, sentiment_tag = self.analyze_sentiment(cleaned_input)
+        predicted_sentiment_label = self.sentiment_label(sentiment_score)
+
+        return cleaned_input, sentiment_score, sentiment_tag, predicted_sentiment_label
 
     def run(self):
         st.title('Tweet Sentiment Analysis')
-
+        st.write("### Analyze Sentiment for a Single User Input")
+        user_input = st.text_area("Enter a tweet for sentiment analysis:")
+        if st.button("Analyze Sentiment"):
+            if user_input:
+                cleaned_input, sentiment_score, sentiment_tag, predicted_sentiment_label = self.predict_single_user_sentiment(user_input)
+                single_user_sentiment_df = pd.DataFrame({'User Input': [cleaned_input],
+                                                         'Sentiment Score': [sentiment_score],
+                                                         'Sentiment Tag': [sentiment_tag],
+                                                         'Predicted Sentiment Label': [predicted_sentiment_label],
+                                                         "agitated words": [self.get_agitation_keywords(user_input)],
+        })
+                st.dataframe(single_user_sentiment_df)
+            else:
+                st.warning("Please enter a tweet for sentiment analysis.")       
+        st.write("### Upload a file to Analyze Sentiment")
         uploaded_file = st.file_uploader('Upload a file', type=['csv', 'xlsx'])
 
         if uploaded_file is not None:
@@ -354,6 +368,7 @@ class TweetSentimentApp:
                 df = pd.read_csv(uploaded_file)
         
 
+            # =========================================================================================
             df['cleaned_text'] = df['tweets'].apply(self.clean_text)
 
  
@@ -439,8 +454,6 @@ class TweetSentimentApp:
                 agitating_table_data.append((politician, keywords, frequency))
 
             st.table(pd.DataFrame(agitating_table_data, columns=['Politician', 'Agitation Keywords', 'Keyword Frequency']))
-
-
 if __name__ == '__main__':
     app = TweetSentimentApp()
     app.run()
