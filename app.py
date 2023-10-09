@@ -473,20 +473,8 @@ class TweetSentimentApp:
             st.write("### Most Destructive Politician:", most_destructive)
             
             st.write("## Politician words for each others.")
-            # Perform topic modeling and analysis on the data
-            # df_with_topics = TopicModelingAnalyzer.perform_topic_modeling_and_analysis(df)
             # Print the dataframe with topics assigned
             st.dataframe(df_with_topics[['username', 'top_topic_words']])
-
-            # analyzer.display_word_clouds(analyzer.lda, df_with_topics)
-
-            #  Create an instance of MultiuserTweetSentimentApp
-            # multiuser_app = MultiuserTweetSentimentApp()
-            # # Call the run_multiuser_analysis method and pass the DataFrame as an argument
-            # multiuser_app.run_multiuser_analysis(df)
-
-            # Perform multi-user behavior analysis
-            # self.run_multiuser_analysis(df)
             st.write("## Behavior Analysis via Sentiments:")
             self.plot_sentiments_by_politician(df)
 # ======================================================================================================
@@ -523,62 +511,6 @@ class TopicModelingAnalyzer:
         df['top_topic_words'] = [top_words_per_topic[topic] for topic in df['topics']]
         
         return df
-
-
-    # def display_word_clouds(self, model, feature_names, num_words=10):
-    #     for topic_idx, topic in enumerate(model.components_):
-    #         top_words_idx = topic.argsort()[:-num_words - 1:-1]
-    #         top_words = [feature_names[i] for i in top_words_idx]
-    #         wordcloud = WordCloud(width=800, height=400).generate(' '.join(top_words))
-    #         plt.figure(figsize=(8, 4))
-    #         plt.imshow(wordcloud, interpolation='bilinear')
-    #         plt.title(f'Topic {topic_idx + 1}')
-    #         plt.axis('off')
-    #         plt.show()
-# =============================================================================================================================================
-# class MultiuserTweetSentimentApp(TweetSentimentApp):
-#     def analyze_multiuser_behavior(self, dataframe):
-#         # Analyze sentiment scores
-#         sentiment_scores = dataframe['cleaned_text'].apply(self.analyze_sentiment)
-
-#         # Extract sentiment score and sentiment tag from the tuple (if it is a tuple)
-#         sentiment_scores = sentiment_scores.apply(lambda x: x if isinstance(x, tuple) else (x, 'Unknown'))
-
-#         # Unpack the tuple into sentiment score and sentiment tag
-#         dataframe['sentiment_score'], dataframe['sentiment_tag'] = zip(*sentiment_scores)
-
-#         # Apply sentiment_label function to the 'sentiment_score' column
-#         dataframe['predicted_sentiment_label'] = dataframe['sentiment_score'].apply(self.sentiment_label)
-
-#         # Calculate sentiment distribution and add it to the DataFrame
-#         sentiment_distribution = dataframe['sentiment_tag'].value_counts()
-#         dataframe['sentiment_distribution'] = dataframe['sentiment_tag'].map(sentiment_distribution)
-#         topic_distribution = dataframe['topics'].value_counts()
-#         dataframe['topic_distribution'] = dataframe['topics'].map(topic_distribution)
-
-#         return dataframe
-
-
-#     def plot_multiuser_behavior(self, behavioral_analysis):
-#         # Plot Sentiment Distribution for Each User
-#         for user, sentiment_dist in behavioral_analysis['sentiment_distribution'].groupby(level=0):
-#             sentiment_dist.plot(kind='bar', figsize=(6, 4))
-#             plt.xlabel('Sentiment')
-#             plt.ylabel('Percentage')
-#             plt.title(f'Sentiment Distribution for {user}')
-#             plt.show()
-
-#         # Plot Topic Distribution for Each User
-#         for user, topic_dist in behavioral_analysis['topic_distribution'].groupby(level=0):
-#             topic_dist.plot(kind='bar', figsize=(6, 4))
-#             plt.xlabel('Dominant Topic')
-#             plt.ylabel('Percentage')
-#             plt.title(f'Topic Distribution for {user}')
-#             plt.show()
-
-#     def run_multiuser_analysis(self, dataframe):
-#         behavioral_analysis = self.analyze_multiuser_behavior(dataframe)
-#         self.plot_multiuser_behavior(behavioral_analysis)
 class MultiuserTweetSentimentApp(TweetSentimentApp):
     def analyze_multiuser_behavior(self, dataframe):
         # Analyze sentiment scores
