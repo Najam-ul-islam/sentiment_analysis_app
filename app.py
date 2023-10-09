@@ -8,6 +8,10 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from tensorflow.keras.preprocessing.text import Tokenizer
 import matplotlib.pyplot as plt
 import joblib
+# from topic_modeling import TopicModelingAnalyzer
+from sklearn.decomposition import LatentDirichletAllocation
+from wordcloud import WordCloud
+# from behavour_analysis import MultiuserTweetSentimentApp
 # from collections import Counter
 nltk.download('punkt')
 nltk.download('vader_lexicon')
@@ -21,6 +25,8 @@ class TweetSentimentApp:
         self.positive_words = self.read_word_list('positive_words.txt')
         self.negative_words = self.read_word_list('negative_words.txt')
         self.neutral_words = self.read_word_list('neutral_words.txt')
+        self.constructive_words = self.read_word_list('constructive_words.txt')
+        self.destructive_words = self.read_word_list('destructive_words.txt')
         self.agitative_words = set(open('agitative_words.txt').read().splitlines())
         self.max_sequence_length = 100
         # Load your logistic regression model and other necessary components here
@@ -45,7 +51,7 @@ class TweetSentimentApp:
         sentiment_tag = 'positive' if sentiment_score > 0 else ('negative' if sentiment_score < 0 else 'neutral')
         
         return sentiment_score, sentiment_tag
-
+    
     def predict_sentiment(self, text):
         
         if isinstance(text, str):
@@ -74,23 +80,17 @@ class TweetSentimentApp:
             return self.sent_analyzer.polarity_scores(tweet)['compound']
         return 0.0  # Default score for non-text values
     def calculate_positive_sentiment_percentage(self, dataframe):
-        
         # Apply sentiment analysis to each tweet
         dataframe['sentiment_score'] = dataframe['tweets'].apply(lambda tweet: self.get_sentiment_score(tweet))
-
         # Categorize sentiment into tags
         dataframe['sentiment_tag'] = dataframe['sentiment_score'].apply(self.sentiment_label)
-
         # Group by user name and sentiment, and count the number of tweets for each combination
         sentiment_counts = dataframe.groupby(['username', 'sentiment_tag']).size().reset_index(name='count')
-
         # Pivot the sentiment counts dataframe to have sentiments as columns
         sentiment_pivot = sentiment_counts.pivot(index='username', columns='sentiment_tag', values='count').fillna(0)
-
         # Calculate the percentage of positive sentiment for each user
         sentiment_pivot['total_tweets'] = sentiment_pivot.sum(axis=1)
         sentiment_pivot['positive_percentage'] = (sentiment_pivot['positive'] / sentiment_pivot['total_tweets']) * 100
-        
         return sentiment_pivot[['positive_percentage']]
     
     def plot_sentiments_by_politician(self, df):
@@ -341,7 +341,33 @@ class TweetSentimentApp:
         predicted_sentiment_label = self.sentiment_label(sentiment_score)
 
         return cleaned_input, sentiment_score, sentiment_tag, predicted_sentiment_label
+    # ====================================================================================
+    # Phase3
+    def most_constructive_and_destructive(self, dataframe, constructive_words, destructive_words):
+        politician_scores = {}
 
+        for index, row in dataframe.iterrows():
+            username = row['username']
+            tweet = str(row['tweets'])
+
+            constructive_count = sum(1 for word in tweet.split() if word in constructive_words)
+            destructive_count = sum(1 for word in tweet.split() if word in destructive_words)
+
+            if username not in politician_scores:
+                politician_scores[username] = {
+                    'constructive_score': 0,
+                    'destructive_score': 0
+                }
+
+            politician_scores[username]['constructive_score'] += constructive_count
+            politician_scores[username]['destructive_score'] += destructive_count
+
+        most_constructive_politician = max(politician_scores, key=lambda x: politician_scores[x]['constructive_score'])
+        most_destructive_politician = max(politician_scores, key=lambda x: politician_scores[x]['destructive_score'])
+
+        return most_constructive_politician, most_destructive_politician
+
+# ================================================================================================================
     def run(self):
         st.title('Tweet Sentiment Analysis')
         st.write("### Analyze Sentiment for a Single User Input")
@@ -366,24 +392,14 @@ class TweetSentimentApp:
                 df = pd.read_excel(uploaded_file)
             else:  # CSV
                 df = pd.read_csv(uploaded_file)
-        
 
+            
             # =========================================================================================
             df['cleaned_text'] = df['tweets'].apply(self.clean_text)
-
- 
             df['sentiment_score'], df['sentiment_tag'] = zip(*df['cleaned_text'].apply(self.analyze_sentiment))
-            
-            
             df['predicted_sentiment'] = df['cleaned_text'].apply(self.predict_sentiment)
-            
-            
             df['predicted_sentiment_label'] = df['predicted_sentiment'].apply(self.sentiment_label)
-            
-            
-            
             # positive_percentage = (df['sentiment_tag'] == 'positive').mean() * 100
-
             st.set_option('deprecation.showPyplotGlobalUse', False)
             plt.figure(figsize=(8, 6))
             plt.hist(df['sentiment_score'], bins=20, color='green', alpha=0.7)
@@ -393,6 +409,9 @@ class TweetSentimentApp:
             st.pyplot()
             st.write("### Data Content")
             st.dataframe(df)
+
+            df_with_topics = analyzer.perform_topic_modeling_and_analysis(df)
+
             most_active_politician, num_tweets = self.find_most_active_politician(df)
 
             mentions_df = pd.DataFrame(self.analyze_tweets_sentiment(df),columns=['User', 'Mentioned Word', 'Sentiment'])
@@ -405,7 +424,7 @@ class TweetSentimentApp:
             st.write('### Sentiment Analysis Results')
             st.write(df)
             # Display positive, negative, neutral sentiment graph
-            self.plot_sentiments_by_politician(df)
+            # self.plot_sentiments_by_politician(df)
             self.calculate_positive_sentiment_percentage(df)
             
             # Calculate sentiment percentages
@@ -438,11 +457,7 @@ class TweetSentimentApp:
                 st.write("No positive sentiment mentions found.")
 
             # Detect politicians inciting agitation
-            agitating_politicians = self.analyze_tweets_for_agitation(df)
-
-            # Find the most agitative politician
-            # most_agitative_politician = self.find_most_agitative_politician(agitating_politicians)
-            # Detect politicians inciting agitation
+            # agitating_politicians = self.analyze_tweets_for_agitation(df)
             agitating_politicians = self.analyze_tweets_for_agitation(df)
 
             # Display politicians inciting agitation in a table
@@ -454,6 +469,201 @@ class TweetSentimentApp:
                 agitating_table_data.append((politician, keywords, frequency))
 
             st.table(pd.DataFrame(agitating_table_data, columns=['Politician', 'Agitation Keywords', 'Keyword Frequency']))
+            # Call the function to find the politicians
+            # Usage example
+            most_constructive, most_destructive = self.most_constructive_and_destructive(df, self.constructive_words, self.destructive_words)
+            st.write("### Most Constructive Politician:", most_constructive)
+            st.write("### Most Destructive Politician:", most_destructive)
+            
+            st.write("## Politician words for each others.")
+            # Perform topic modeling and analysis on the data
+            # df_with_topics = TopicModelingAnalyzer.perform_topic_modeling_and_analysis(df)
+            # Print the dataframe with topics assigned
+            st.dataframe(df_with_topics[['username', 'top_topic_words']])
+
+            # analyzer.display_word_clouds(analyzer.lda, df_with_topics)
+
+            #  Create an instance of MultiuserTweetSentimentApp
+            # multiuser_app = MultiuserTweetSentimentApp()
+            # # Call the run_multiuser_analysis method and pass the DataFrame as an argument
+            # multiuser_app.run_multiuser_analysis(df)
+
+            # Perform multi-user behavior analysis
+            # self.run_multiuser_analysis(df)
+            st.write("## Behavior Analysis via Sentiments:")
+            self.plot_sentiments_by_politician(df)
+# ======================================================================================================
+    
+# =============================================================================================================================================
+class TopicModelingAnalyzer:
+    def __init__(self, tfidf_vectorizer_path, num_topics=3):
+        self.tfidf_vectorizer = joblib.load(tfidf_vectorizer_path)  # Load the TF-IDF vectorizer
+        self.num_topics = num_topics
+        self.lda = LatentDirichletAllocation(n_components=self.num_topics, random_state=42)
+
+    def perform_topic_modeling_and_analysis(self, df):
+        # Fill missing values in the 'tweets' column with an empty string
+        df['tweets'].fillna('', inplace=True)
+        
+        # Transform the text data using the loaded vectorizer
+        tfidf_matrix = self.tfidf_vectorizer.transform(df['tweets'])
+
+        # Fit LDA for topic modeling
+        self.lda.fit(tfidf_matrix)
+        
+        # Get the topics for each tweet
+        df['topics'] = self.lda.transform(tfidf_matrix).argmax(axis=1)
+        
+        # Get the top words for each topic
+        feature_names = self.tfidf_vectorizer.get_feature_names_out()
+        top_words_per_topic = []
+        for topic_idx, topic in enumerate(self.lda.components_):
+            top_words_idx = topic.argsort()[:-10 - 1:-1]
+            top_words = [feature_names[i] for i in top_words_idx]
+            top_words_per_topic.append(top_words)
+
+        # Add a column with the top topic words for each tweet
+        df['top_topic_words'] = [top_words_per_topic[topic] for topic in df['topics']]
+        
+        return df
+
+
+    # def display_word_clouds(self, model, feature_names, num_words=10):
+    #     for topic_idx, topic in enumerate(model.components_):
+    #         top_words_idx = topic.argsort()[:-num_words - 1:-1]
+    #         top_words = [feature_names[i] for i in top_words_idx]
+    #         wordcloud = WordCloud(width=800, height=400).generate(' '.join(top_words))
+    #         plt.figure(figsize=(8, 4))
+    #         plt.imshow(wordcloud, interpolation='bilinear')
+    #         plt.title(f'Topic {topic_idx + 1}')
+    #         plt.axis('off')
+    #         plt.show()
+# =============================================================================================================================================
+# class MultiuserTweetSentimentApp(TweetSentimentApp):
+#     def analyze_multiuser_behavior(self, dataframe):
+#         # Analyze sentiment scores
+#         sentiment_scores = dataframe['cleaned_text'].apply(self.analyze_sentiment)
+
+#         # Extract sentiment score and sentiment tag from the tuple (if it is a tuple)
+#         sentiment_scores = sentiment_scores.apply(lambda x: x if isinstance(x, tuple) else (x, 'Unknown'))
+
+#         # Unpack the tuple into sentiment score and sentiment tag
+#         dataframe['sentiment_score'], dataframe['sentiment_tag'] = zip(*sentiment_scores)
+
+#         # Apply sentiment_label function to the 'sentiment_score' column
+#         dataframe['predicted_sentiment_label'] = dataframe['sentiment_score'].apply(self.sentiment_label)
+
+#         # Calculate sentiment distribution and add it to the DataFrame
+#         sentiment_distribution = dataframe['sentiment_tag'].value_counts()
+#         dataframe['sentiment_distribution'] = dataframe['sentiment_tag'].map(sentiment_distribution)
+#         topic_distribution = dataframe['topics'].value_counts()
+#         dataframe['topic_distribution'] = dataframe['topics'].map(topic_distribution)
+
+#         return dataframe
+
+
+#     def plot_multiuser_behavior(self, behavioral_analysis):
+#         # Plot Sentiment Distribution for Each User
+#         for user, sentiment_dist in behavioral_analysis['sentiment_distribution'].groupby(level=0):
+#             sentiment_dist.plot(kind='bar', figsize=(6, 4))
+#             plt.xlabel('Sentiment')
+#             plt.ylabel('Percentage')
+#             plt.title(f'Sentiment Distribution for {user}')
+#             plt.show()
+
+#         # Plot Topic Distribution for Each User
+#         for user, topic_dist in behavioral_analysis['topic_distribution'].groupby(level=0):
+#             topic_dist.plot(kind='bar', figsize=(6, 4))
+#             plt.xlabel('Dominant Topic')
+#             plt.ylabel('Percentage')
+#             plt.title(f'Topic Distribution for {user}')
+#             plt.show()
+
+#     def run_multiuser_analysis(self, dataframe):
+#         behavioral_analysis = self.analyze_multiuser_behavior(dataframe)
+#         self.plot_multiuser_behavior(behavioral_analysis)
+class MultiuserTweetSentimentApp(TweetSentimentApp):
+    def analyze_multiuser_behavior(self, dataframe):
+        # Analyze sentiment scores
+        sentiment_scores = dataframe['cleaned_text'].apply(self.analyze_sentiment)
+
+        # Extract sentiment score and sentiment tag from the tuple (if it is a tuple)
+        sentiment_scores = sentiment_scores.apply(lambda x: x if isinstance(x, tuple) else (x, 'Unknown'))
+
+        # Unpack the tuple into sentiment score and sentiment tag
+        dataframe['sentiment_score'], dataframe['sentiment_tag'] = zip(*sentiment_scores)
+
+        # Apply sentiment_label function to the 'sentiment_score' column
+        dataframe['predicted_sentiment_label'] = dataframe['sentiment_score'].apply(self.sentiment_label)
+
+        # Calculate sentiment distribution and add it to the DataFrame
+        sentiment_distribution = dataframe.groupby(['username', 'sentiment_tag']).size()  # Group by user and sentiment tag
+        sentiment_distribution = sentiment_distribution.reset_index(name='count')
+        total_tweets = sentiment_distribution.groupby('username')['count'].sum()
+        sentiment_distribution['percentage'] = (sentiment_distribution['count'] / total_tweets) * 100
+
+        # Calculate topic distribution and add it to the DataFrame (if 'topics' column exists)
+        if 'topics' in dataframe.columns:
+            topic_distribution = dataframe.groupby(['username', 'topics']).size()  # Group by user and topic
+            topic_distribution = topic_distribution.reset_index(name='count')
+            total_topics = topic_distribution.groupby('username')['count'].sum()
+            topic_distribution['percentage'] = (topic_distribution['count'] / total_topics) * 100
+
+            return dataframe, sentiment_distribution, topic_distribution
+
+        return dataframe, sentiment_distribution
+
+
+    def plot_multiuser_behavior(self, behavioral_analysis):
+        # Plot Sentiment Distribution for Each User
+        for user, sentiment_dist in behavioral_analysis['sentiment_distribution'].groupby(level=0):
+            sentiment_dist.plot(kind='bar', figsize=(6, 4))
+            plt.xlabel('Sentiment')
+            plt.ylabel('Percentage')
+            plt.title(f'Sentiment Distribution for {user}')
+            st.pyplot()  # Use st.pyplot() to display the plot in Streamlit
+
+        # Plot Topic Distribution for Each User
+        for user, topic_dist in behavioral_analysis['topic_distribution'].groupby(level=0):
+            topic_dist.plot(kind='bar', figsize=(6, 4))
+            plt.xlabel('Dominant Topic')
+            plt.ylabel('Percentage')
+            plt.title(f'Topic Distribution for {user}')
+            st.pyplot()  # Use st.pyplot() to display the plot in Streamlit
+
+    def run_multiuser_analysis(self, dataframe):
+        if 'username' not in dataframe.columns or 'sentiment_tag' not in dataframe.columns:
+            st.warning("The input dataframe does not contain necessary columns.")
+            return
+
+        dataframe, sentiment_distribution, topic_distribution = self.analyze_multiuser_behavior(dataframe)
+
+        # Plot Sentiment Distribution for Each User
+        for user, sentiment_dist in sentiment_distribution.groupby('username'):
+            fig, ax = plt.subplots()
+            ax.bar(sentiment_dist['sentiment_tag'], sentiment_dist['percentage'])
+            ax.set_xlabel('Sentiment')
+            ax.set_ylabel('Percentage')
+            ax.set_title(f'Sentiment Distribution for {user}')
+            st.pyplot(fig)
+
+        # Plot Topic Distribution for Each User (if 'topics' column exists in the DataFrame)
+        if 'topics' in dataframe.columns:
+            for user, topic_dist in topic_distribution.groupby('username'):
+                fig, ax = plt.subplots()
+                ax.bar(topic_dist['topics'], topic_dist['percentage'])
+                ax.set_xlabel('Dominant Topic')
+                ax.set_ylabel('Percentage')
+                ax.set_title(f'Topic Distribution for {user}')
+                st.pyplot(fig)
+
+
+    
+# =============================================================================================================================================
+# def main():
+
 if __name__ == '__main__':
-    app = TweetSentimentApp()
+    app = MultiuserTweetSentimentApp()
+    analyzer = TopicModelingAnalyzer(tfidf_vectorizer_path='tf-idf-vectorizer.pkl')
+    # app.run_multiuser_analysis(SentimentIntensityAnalyzer.run.df)
     app.run()
