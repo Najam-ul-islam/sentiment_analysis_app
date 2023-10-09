@@ -8,11 +8,8 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from tensorflow.keras.preprocessing.text import Tokenizer
 import matplotlib.pyplot as plt
 import joblib
-# from topic_modeling import TopicModelingAnalyzer
 from sklearn.decomposition import LatentDirichletAllocation
 from wordcloud import WordCloud
-# from behavour_analysis import MultiuserTweetSentimentApp
-# from collections import Counter
 nltk.download('punkt')
 nltk.download('vader_lexicon')
 nltk.download('stopwords')
