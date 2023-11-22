@@ -6,3 +6,5 @@ re
 scikit-learn
 joblib
 pickle
+matplotlib
+seaborn
