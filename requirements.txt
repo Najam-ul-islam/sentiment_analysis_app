@@ -8,3 +8,5 @@ joblib
 pickle
 matplotlib
 seaborn
+wordcloud
+tensorflow
