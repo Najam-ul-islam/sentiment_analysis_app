@@ -8,4 +8,4 @@ matplotlib
 seaborn
 wordcloud
 tensorflow
-textblob==0.9.0
+textblob
