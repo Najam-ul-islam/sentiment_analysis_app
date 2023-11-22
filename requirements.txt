@@ -2,10 +2,8 @@ streamlit
 pandas
 numpy
 nltk
-re
 scikit-learn
 joblib
-pickle
 matplotlib
 seaborn
 wordcloud
