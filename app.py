@@ -365,48 +365,23 @@ class TweetSentimentApp:
         return most_constructive_politician, most_destructive_politician
 
 # ================================================================================================================
-    # def run(self):
-    #     st.title('Tweet Sentiment Analysis')
-    #     st.write("### Analyze Sentiment for a Single User Input")
-    #     user_input = st.text_area("Enter a tweet for sentiment analysis:")
-    #     if st.button("Analyze Sentiment"):
-    #         if user_input:
-    #             cleaned_input, sentiment_score, sentiment_tag, predicted_sentiment_label = self.predict_single_user_sentiment(user_input)
-    #             single_user_sentiment_df = pd.DataFrame({'User Input': [cleaned_input],
-    #                                                      'Sentiment Score': [sentiment_score],
-    #                                                      'Sentiment Tag': [sentiment_tag],
-    #                                                      'Predicted Sentiment Label': [predicted_sentiment_label],
-    #                                                      # "agitated words": [self.get_agitation_keywords(user_input)],
-    #     })
-    #             st.dataframe(single_user_sentiment_df)
-    #         else:
-    #             st.warning("Please enter a tweet for sentiment analysis.")    
     def run(self):
         st.title('Tweet Sentiment Analysis')
-        
-        # Add widget to select columns for tweets
-        selected_tweet_column = st.selectbox('Select the column containing tweets:', df.columns, key='tweets')
-        
+        st.write("### Analyze Sentiment for a Single User Input")
+        user_input = st.text_area("Enter a tweet for sentiment analysis:")
         if st.button("Analyze Sentiment"):
-            if selected_tweet_column:
-                df['cleaned_text'] = df[selected_tweet_column].apply(self.clean_text)
-                df['sentiment_score'], df['sentiment_tag'] = zip(*df['cleaned_text'].apply(self.analyze_sentiment))
-                df['predicted_sentiment'] = df['cleaned_text'].apply(self.predict_sentiment)
-                df['predicted_sentiment_label'] = df['predicted_sentiment'].apply(self.sentiment_label)
-
-                st.set_option('deprecation.showPyplotGlobalUse', False)
-                plt.figure(figsize=(8, 6))
-                plt.hist(df['sentiment_score'], bins=20, color='green', alpha=0.7)
-                plt.xlabel('Sentiment Score')
-                plt.ylabel('Frequency')
-                plt.title('Sentiment Distribution')
-                st.pyplot()
-
-                st.write("### Data Content")
-                st.dataframe(df[['username', selected_tweet_column, 'sentiment_score', 'sentiment_tag', 'predicted_sentiment_label']])
+            if user_input:
+                cleaned_input, sentiment_score, sentiment_tag, predicted_sentiment_label = self.predict_single_user_sentiment(user_input)
+                single_user_sentiment_df = pd.DataFrame({'User Input': [cleaned_input],
+                                                         'Sentiment Score': [sentiment_score],
+                                                         'Sentiment Tag': [sentiment_tag],
+                                                         'Predicted Sentiment Label': [predicted_sentiment_label],
+                                                         # "agitated words": [self.get_agitation_keywords(user_input)],
+        })
+                st.dataframe(single_user_sentiment_df)
             else:
-                st.warning("Please select the column containing tweets.")
-        # ===================================================================================================================================
+                st.warning("Please enter a tweet for sentiment analysis.")    
+
         st.write("### Upload a file to Analyze Sentiment")
         st.write("Column name should be 'tweets' and 'username' for multiuser tweets sentiment")
         uploaded_file = st.file_uploader('Upload a file', type=['csv', 'xlsx'])
