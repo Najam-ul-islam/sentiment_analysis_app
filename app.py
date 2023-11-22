@@ -376,7 +376,7 @@ class TweetSentimentApp:
                                                          'Sentiment Score': [sentiment_score],
                                                          'Sentiment Tag': [sentiment_tag],
                                                          'Predicted Sentiment Label': [predicted_sentiment_label],
-                                                         "agitated words": [self.get_agitation_keywords(user_input)],
+                                                         # "agitated words": [self.get_agitation_keywords(user_input)],
         })
                 st.dataframe(single_user_sentiment_df)
             else:
