@@ -9,3 +9,4 @@ seaborn
 wordcloud
 tensorflow
 textblob
+openpyxl
