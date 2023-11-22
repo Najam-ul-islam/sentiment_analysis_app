@@ -382,7 +382,7 @@ class TweetSentimentApp:
             else:
                 st.warning("Please enter a tweet for sentiment analysis.")       
         st.write("### Upload a file to Analyze Sentiment")
-        st.write("#### Column name should be 'tweets'")
+        st.write("Column name should be 'tweets' and 'username' for multiuser tweets sentiment")
         uploaded_file = st.file_uploader('Upload a file', type=['csv', 'xlsx'])
 
         if uploaded_file is not None:
