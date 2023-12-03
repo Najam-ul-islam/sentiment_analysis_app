@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import joblib
 from sklearn.decomposition import LatentDirichletAllocation
 from wordcloud import WordCloud
+import io
+import base64
 nltk.download('punkt')
 nltk.download('vader_lexicon')
 nltk.download('stopwords')
@@ -363,8 +365,31 @@ class TweetSentimentApp:
         most_destructive_politician = max(politician_scores, key=lambda x: politician_scores[x]['destructive_score'])
 
         return most_constructive_politician, most_destructive_politician
+    # ====================================================================================
+    # WordCloud Generation
+    # ====================================================================================
+    def generate_wordclouds_for_each_user(self, dataframe):
+        for sentiment in ['positive', 'negative', 'neutral']:
+            for username in dataframe['username'].unique():
+                words = self.get_words_by_sentiment(dataframe, username, sentiment)
+                if words:
+                    self.plot_wordcloud(username, sentiment, words)
 
-# ================================================================================================================
+    def get_words_by_sentiment(self, dataframe, username, sentiment):
+        words = ' '.join(dataframe[(dataframe['username'] == username) & (dataframe['sentiment_tag'] == sentiment)]['cleaned_text'])
+        return words
+
+    def plot_wordcloud(self, username, sentiment, words):
+        wordcloud = WordCloud(width=800, height=400, background_color='black').generate(words)
+
+        # Convert the word cloud image to a base64-encoded string
+        image_stream = io.BytesIO()
+        wordcloud.to_image().save(image_stream, format='PNG')
+        image_str = base64.b64encode(image_stream.getvalue()).decode()
+
+        # Display the word cloud image using st.image()
+        st.image(f"data:image/png;base64,{image_str}", caption=f'{sentiment.title()} Word Cloud for {username}', use_column_width=True)
+    # ===================================================================================================================
     def run(self):
         st.title('Tweet Sentiment Analysis')
         st.write("### Analyze Sentiment for a Single User Input")
@@ -479,9 +504,12 @@ class TweetSentimentApp:
             st.dataframe(df_with_topics[['username', 'top_topic_words']])
             st.write("## Behavior Analysis via Sentiments:")
             self.plot_sentiments_by_politician(df)
-# ======================================================================================================
-    
-# =============================================================================================================================================
+
+            # Plot word clouds for each user
+            st.write("## Word Clouds for Each User")
+            self.generate_wordclouds_for_each_user(df)
+# =====================================================================================================
+# ================================================================================================================================
 class TopicModelingAnalyzer:
     def __init__(self, tfidf_vectorizer_path, num_topics=3):
         self.tfidf_vectorizer = joblib.load(tfidf_vectorizer_path)  # Load the TF-IDF vectorizer
@@ -513,6 +541,7 @@ class TopicModelingAnalyzer:
         df['top_topic_words'] = [top_words_per_topic[topic] for topic in df['topics']]
         
         return df
+
 class MultiuserTweetSentimentApp(TweetSentimentApp):
     def analyze_multiuser_behavior(self, dataframe):
         # Analyze sentiment scores
